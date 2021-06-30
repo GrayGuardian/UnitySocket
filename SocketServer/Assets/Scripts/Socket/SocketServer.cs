@@ -29,7 +29,8 @@ public class SocketServer
         Port = port;
 
         _server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        _server.Bind(new IPEndPoint(IPAddress.Parse(IP), Port));  //绑定IP地址：端口  
+        IPAddress ipAddress = IPAddress.Parse(IP);//解析IP地址
+        _server.Bind(new IPEndPoint(ipAddress, Port));  //绑定IP地址：端口  
 
         _server.Listen(10);    //设定最多10个排队连接请求
 
