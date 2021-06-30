@@ -1,0 +1,11 @@
+*.sln
+*.csproj
+SocketClient/.vscode/
+SocketClient/Packages/
+SocketClient/Logs/
+SocketClient/Library/
+SocketServer/Packages/
+SocketServer/obj/
+SocketServer/Logs/
+SocketServer/Library/
+SocketServer/.vscode/
