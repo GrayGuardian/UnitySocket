@@ -3,6 +3,10 @@
 /// </summary>
 public enum eProtocalCommand
 {
+    sc_head = 0x0001,   //心跳包
+    sc_disconn = 0x0002,   //客户端主动断开
+    sc_kickout = 0x0003,    //服务端踢出
+
     sc_data_image = 0x3000,//图片
     sc_data_video = 0x4000,//视频
     server_received_data = 0x6000,//收到消息

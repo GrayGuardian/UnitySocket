@@ -9,3 +9,4 @@ SocketServer/obj/
 SocketServer/Logs/
 SocketServer/Library/
 SocketServer/.vscode/
+SocketClient/obj/
