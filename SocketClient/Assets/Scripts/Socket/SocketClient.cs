@@ -108,9 +108,11 @@ public class SocketClient
     {
         while (true)
         {
-            if (!_isConnect) break;
+
             try
             {
+                if (!_isConnect) break;
+                if (_client.Available <= 0) continue;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = _client.Receive(rbytes);
                 if (len > 0)
@@ -141,16 +143,28 @@ public class SocketClient
             }
         }
     }
+    /// <summary>
+    /// 业务逻辑 - 客户端主动断开
+    /// </summary>
+    public void DisConnect()
+    {
+        Send((UInt16)eProtocalCommand.sc_disconn);
+        Close();
+    }
+    /// <summary>
+    /// 业务逻辑 - 被服务端断开
+    /// </summary>
     public void Close()
     {
-        UnityEngine.Debug.Log("关闭连接");
-        Send((UInt16)eProtocalCommand.sc_disconn);
+
         Clear();
-        _client.Close();
 
         onDisconnect();
     }
-    private void Clear()
+    /// <summary>
+    /// 缓存数据清理
+    /// </summary>
+    public void Clear()
     {
         if (!_isConnect) return;
         _isConnect = false;
@@ -166,6 +180,7 @@ public class SocketClient
         // }
         if (_client != null)
         {
+            _client.Close();
             _client = null;
         }
 

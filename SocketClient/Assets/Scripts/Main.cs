@@ -23,7 +23,7 @@ public class Main : MonoBehaviour
         _client.Connect(() =>
         {
             UnityEngine.Debug.Log("连接成功");
-            _client.Close();
+            _client.DisConnect();
         }, () =>
 {
     UnityEngine.Debug.Log("连接失败");
@@ -34,7 +34,7 @@ public class Main : MonoBehaviour
     {
         if (_client != null)
         {
-            _client.Close();
+            _client.Clear();
         }
 
     }

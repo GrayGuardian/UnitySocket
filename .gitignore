@@ -10,3 +10,5 @@ SocketServer/Logs/
 SocketServer/Library/
 SocketServer/.vscode/
 SocketClient/obj/
+SocketClient/Temp/
+SocketServer/Temp/

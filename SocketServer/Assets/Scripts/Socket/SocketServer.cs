@@ -77,9 +77,10 @@ public class SocketServer
         return Convert.ToInt64(ts.TotalMilliseconds);
     }
 
-    public void Send(Socket client, byte[] buff)
+    public void Send(Socket client, UInt16 e, byte[] buff = null)
     {
-        var data = new SocketDataPack((UInt16)eProtocalCommand.sc_data_obj_get_process, buff).Buff;
+        buff = buff ?? new byte[] { };
+        var data = new SocketDataPack(e, buff).Buff;
         client.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(onSend), client);
     }
     /// <summary>
@@ -102,7 +103,7 @@ public class SocketServer
                     var dataPack = new SocketDataPack();
                     if (_dataBuffer.TryUnpack(out dataPack)) // 尝试解包
                     {
-                        UnityEngine.Debug.Log("接收数据");
+
                         if (dataPack.Type == (UInt16)eProtocalCommand.sc_head)
                         {
                             // 接收到心跳包
@@ -111,7 +112,7 @@ public class SocketServer
                         else if (dataPack.Type == (UInt16)eProtocalCommand.sc_disconn)
                         {
                             // 客户端断开连接
-                            UnityEngine.Debug.Log("客户端主动断开连接");
+                            UnityEngine.Debug.Log("客户端主动断开");
                             Clear(tsocket);
 
                         }
@@ -147,7 +148,16 @@ public class SocketServer
             info.HeadTime = now;
         }
     }
+    private void KickOut(Socket client)
+    {
 
+        // 踢出连接
+        Send(client, (UInt16)eProtocalCommand.sc_kickout);
+
+        Clear(client);
+        client.Close();
+
+    }
     private void Clear(Socket client)
     {
         UnityEngine.Debug.Log("清理客户端连接");
