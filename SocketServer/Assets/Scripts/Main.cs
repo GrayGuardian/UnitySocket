@@ -7,7 +7,7 @@ public class Main : MonoBehaviour
     SocketServer _server;
     private void Awake()
     {
-        _server = new SocketServer("127.0.0.1", 6854);
+        _server = new SocketServer("192.168.108.56", 6854);
     }
     private void OnDestroy()
     {

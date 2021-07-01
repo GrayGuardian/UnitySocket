@@ -7,7 +7,7 @@ public class Main : MonoBehaviour
     SocketClient _client;
     private void Awake()
     {
-        _client = new SocketClient("127.0.0.1", 6854);
+        _client = new SocketClient("192.168.108.56", 6854);
 
         _client.OnDisconnect += () => { UnityEngine.Debug.Log("断开连接"); };
 
@@ -23,7 +23,7 @@ public class Main : MonoBehaviour
         _client.Connect(() =>
         {
             UnityEngine.Debug.Log("连接成功");
-            _client.DisConnect();
+            // _client.DisConnect();
         }, () =>
 {
     UnityEngine.Debug.Log("连接失败");
