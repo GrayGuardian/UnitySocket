@@ -4,19 +4,39 @@ using UnityEngine;
 
 public class Main : MonoBehaviour
 {
+    public UnityEngine.UI.Text Text;
     SocketClient _client;
     private void Awake()
     {
         _client = new SocketClient("192.168.108.56", 6854);
 
-        _client.OnDisconnect += () => { UnityEngine.Debug.Log("断开连接"); };
+        _client.OnDisconnect += () =>
+        {
+            Text.text += "断开连接" + "/n";
+            UnityEngine.Debug.Log("断开连接");
+        };
 
-        _client.OnReceive += (data) => { UnityEngine.Debug.LogFormat("接收到数据>>>{0}", data.Buff.Length); };
-        _client.OnError += (ex) => { UnityEngine.Debug.LogFormat("出现异常>>>{0}", ex); };
+        _client.OnReceive += (data) =>
+        {
+            UnityEngine.Debug.LogFormat("接收到数据>>>{0}", data.Buff.Length);
+        };
+        _client.OnError += (ex) =>
+        {
+            UnityEngine.Debug.LogFormat("出现异常>>>{0}", ex);
+        };
 
-        _client.OnReConnectSuccess += (num) => { UnityEngine.Debug.LogFormat("第{0}次重连成功", num); };
-        _client.OnReConnectError += (num) => { UnityEngine.Debug.LogFormat("第{0}次重连失败", num); };
-        _client.OnReconnecting += (num) => { UnityEngine.Debug.LogFormat("正在进行第{0}次重连", num); };
+        _client.OnReConnectSuccess += (num) =>
+        {
+            UnityEngine.Debug.LogFormat("第{0}次重连成功", num);
+        };
+        _client.OnReConnectError += (num) =>
+        {
+            UnityEngine.Debug.LogFormat("第{0}次重连失败", num);
+        };
+        _client.OnReconnecting += (num) =>
+        {
+            UnityEngine.Debug.LogFormat("正在进行第{0}次重连", num);
+        };
 
 
 
@@ -25,9 +45,9 @@ public class Main : MonoBehaviour
             UnityEngine.Debug.Log("连接成功");
             // _client.DisConnect();
         }, () =>
-{
-    UnityEngine.Debug.Log("连接失败");
-});
+        {
+            UnityEngine.Debug.Log("连接失败");
+        });
 
     }
     private void OnDestroy()

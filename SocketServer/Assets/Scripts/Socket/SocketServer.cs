@@ -169,7 +169,8 @@ public class SocketServer
         if (!_isValid) return;
         _isValid = false;
         // if (_connectThread != null) _connectThread.Abort();
-        foreach (var socket in ClientInfoDic.Keys)
+        var keys = ClientInfoDic.Keys;
+        foreach (var socket in keys)
         {
             Clear(socket);
         }
