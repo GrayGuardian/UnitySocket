@@ -57,13 +57,21 @@ public class SocketServer
     {
         while (true)
         {
-            if (!_isValid) break;
-            Socket client = _server.Accept();
-            Thread receiveThread = new Thread(ReceiveEvent);
-            ClientInfoDic.Add(client, new SocketInfo() { Client = client, ReceiveThread = receiveThread, HeadTime = GetNowTime() });
-            receiveThread.Start(client);
-            UnityEngine.Debug.Log("连接成功" + client.RemoteEndPoint.ToString());
-            if (OnConnect != null) OnConnect(client);
+            try
+            {
+                if (!_isValid) break;
+                Socket client = _server.Accept();
+                Thread receiveThread = new Thread(ReceiveEvent);
+                ClientInfoDic.Add(client, new SocketInfo() { Client = client, ReceiveThread = receiveThread, HeadTime = GetNowTime() });
+                receiveThread.Start(client);
+                UnityEngine.Debug.Log("连接成功" + client.RemoteEndPoint.ToString());
+                if (OnConnect != null) OnConnect(client);
+            }
+            catch
+            {
+                break;
+            }
+
         }
 
     }
@@ -92,9 +100,13 @@ public class SocketServer
         while (true)
         {
             if (!_isValid) break;
-            if (!ClientInfoDic.ContainsKey(tsocket)) break;
+            if (!ClientInfoDic.ContainsKey(tsocket))
+            {
+                break;
+            }
             try
             {
+                if (tsocket.Available <= 0) continue;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = tsocket.Receive(rbytes);
                 if (len > 0)
@@ -158,22 +170,32 @@ public class SocketServer
         client.Close();
 
     }
+    /// <summary>
+    /// 清理客户端连接
+    /// </summary>
+    /// <param name="client"></param>
     private void Clear(Socket client)
     {
-        UnityEngine.Debug.Log("清理客户端连接");
         ClientInfoDic.Remove(client);
-
     }
+    /// <summary>
+    /// 关闭
+    /// </summary>
     public void Close()
     {
         if (!_isValid) return;
         _isValid = false;
         // if (_connectThread != null) _connectThread.Abort();
-        var keys = ClientInfoDic.Keys;
-        foreach (var socket in keys)
+        var tempList = new List<Socket>();
+        foreach (var socket in ClientInfoDic.Keys)
+        {
+            tempList.Add(socket);
+        }
+        foreach (var socket in tempList)
         {
             Clear(socket);
         }
+        _server.Close();
     }
 
     /// <summary>

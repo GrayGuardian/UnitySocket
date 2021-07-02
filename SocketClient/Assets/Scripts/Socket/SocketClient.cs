@@ -35,6 +35,8 @@ public class SocketClient
     public event Action<int> OnReconnecting;  // 重连中回调
 
     private bool _isConnect = false;
+    private bool _isReConnect = false;
+    private static object _reConnectLock = new object();
 
     public SocketClient(string ip, int port)
     {
@@ -48,15 +50,18 @@ public class SocketClient
         tsuccessEvent = () =>
         {
             if (successEvent != null) successEvent();
+            Main.text += "清理一次连接事件" + "\n";
             OnConnectSuccess -= tsuccessEvent;
             OnConnectError -= terrorEvent;
         };
         terrorEvent = () =>
         {
             if (errorEvent != null) errorEvent();
+            Main.text += "清理一次连接事件" + "\n";
             OnConnectSuccess -= tsuccessEvent;
             OnConnectError -= terrorEvent;
         };
+        Main.text += "注册一次连接事件" + "\n";
         OnConnectSuccess += tsuccessEvent;
         OnConnectError += terrorEvent;
         try
@@ -81,12 +86,14 @@ public class SocketClient
         num++;
         if (num > RECONN_MAX_SUM)
         {
+            _isReConnect = false;
             Close();
             return;
         }
         if (OnReconnecting != null) OnReconnecting(num);
         Connect(() =>
         {
+            _isReConnect = false;
             if (OnReConnectSuccess != null) OnReConnectSuccess(num);
         }, () =>
         {
@@ -112,7 +119,7 @@ public class SocketClient
             try
             {
                 if (!_isConnect) break;
-                if (_client.Available <= 0) continue;
+                if (_client.Available <= 0) break;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = _client.Receive(rbytes);
                 if (len > 0)
@@ -234,7 +241,21 @@ public class SocketClient
         if (OnError != null) OnError(e);
 
         // 尝试重连
-        ReConnect();
+        lock (_reConnectLock)
+        {
+            Main.text += "进入线程" + "\n";
+            UnityEngine.Debug.Log("进入线程");
+            if (!_isReConnect)
+            {
+                _isReConnect = true;
+                ReConnect();
+            }
+            else
+            {
+                Main.text += "已经在重连了" + "\n";
+                UnityEngine.Debug.Log("已经在重连了");
+            }
+        }
     }
 
 
