@@ -14,6 +14,12 @@ using System.Timers;
 /// </summary>
 public class SocketClient
 {
+    /// <summary>
+    /// 主线程
+    /// </summary>
+    private SynchronizationContext _mainThread;
+
+
     public string IP;
     public int Port;
 
@@ -41,8 +47,12 @@ public class SocketClient
 
     private bool _isConnect = false;
 
+
+
     public SocketClient(string ip, int port)
     {
+        _mainThread = SynchronizationContext.Current;
+
         IP = ip;
         Port = port;
     }
@@ -87,14 +97,14 @@ public class SocketClient
             _connTimeoutTimer.AutoReset = false;
             _connTimeoutTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
             {
-                if (OnConnectError != null) OnConnectError();
+                PostMainThreadAction(OnConnectError);
             };
             _connTimeoutTimer.Start();
 
         }
         catch (SocketException ex)
         {
-            if (OnConnectError != null) OnConnectError();
+            PostMainThreadAction(OnConnectError);
             // throw;
         }
     }
@@ -111,13 +121,13 @@ public class SocketClient
             Close();
             return;
         }
-        if (OnReconnecting != null) OnReconnecting(index);
+        PostMainThreadAction<int>(OnReconnecting, index);
         Connect(() =>
         {
-            if (OnReConnectSuccess != null) OnReConnectSuccess(index);
+            PostMainThreadAction<int>(OnReConnectSuccess, index);
         }, () =>
         {
-            if (OnReConnectError != null) OnReConnectError(index);
+            PostMainThreadAction<int>(OnReConnectError, index);
             ReConnect(num, index);
         });
 
@@ -133,7 +143,7 @@ public class SocketClient
             {
                 Socket c = (Socket)asyncSend.AsyncState;
                 c.EndSend(asyncSend);
-                if (onTrigger != null) onTrigger(dataPack);
+                PostMainThreadAction<SocketDataPack>(onTrigger, dataPack);
             }), _client);
         }
         catch (SocketException ex)
@@ -168,7 +178,8 @@ public class SocketClient
                         }
                         else
                         {
-                            onReceive(dataPack);
+                            // 收到消息
+                            PostMainThreadAction<SocketDataPack>(OnReceive, dataPack);
                         }
 
 
@@ -198,7 +209,7 @@ public class SocketClient
 
         Clear();
 
-        if (OnDisconnect != null) OnDisconnect();
+        PostMainThreadAction(OnDisconnect);
     }
     /// <summary>
     /// 缓存数据清理
@@ -217,6 +228,11 @@ public class SocketClient
         //     _receiveThread.Abort();
         //     _receiveThread = null;
         // }
+        if (_connTimeoutTimer != null)
+        {
+            _connTimeoutTimer.Stop();
+            _connTimeoutTimer = null;
+        }
         if (_client != null)
         {
             _client.Close();
@@ -253,12 +269,11 @@ public class SocketClient
             _receiveThread.IsBackground = true;
             _receiveThread.Start();
 
-
-            if (OnConnectSuccess != null) OnConnectSuccess();
+            PostMainThreadAction(OnConnectSuccess);
         }
         catch (SocketException ex)
         {
-            if (OnConnectError != null) OnConnectError();
+            PostMainThreadAction(OnConnectError);
             // throw;
         }
     }
@@ -270,7 +285,8 @@ public class SocketClient
     private void onError(SocketException ex)
     {
         Clear();
-        if (OnError != null) OnError(ex);
+
+        PostMainThreadAction<SocketException>(OnError, ex);
 
         ReConnect();
     }
@@ -294,13 +310,25 @@ public class SocketClient
 
         }
     }
-    /// <summary>
-    /// 接收数据回调
-    /// </summary>
-    /// <param name="dataPack"></param>
-    private void onReceive(SocketDataPack dataPack)
-    {
-        if (OnReceive != null) OnReceive(dataPack);
-    }
 
+    /// <summary>
+    /// 通知主线程回调
+    /// </summary>
+    private void PostMainThreadAction(Action action)
+    {
+        _mainThread.Post(new SendOrPostCallback((o) =>
+        {
+            Action e = (Action)o.GetType().GetProperty("action").GetValue(o);
+            if (e != null) e();
+        }), new { action = action });
+    }
+    private void PostMainThreadAction<T>(Action<T> action, T arg1)
+    {
+        _mainThread.Post(new SendOrPostCallback((o) =>
+        {
+            Action<T> e = (Action<T>)o.GetType().GetProperty("action").GetValue(o);
+            T t1 = (T)o.GetType().GetProperty("arg1").GetValue(o);
+            if (e != null) e(t1);
+        }), new { action = action, arg1 = arg1 });
+    }
 }

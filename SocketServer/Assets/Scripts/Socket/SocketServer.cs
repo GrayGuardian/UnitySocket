@@ -20,6 +20,13 @@ public class SocketInfo
 /// </summary>
 public class SocketServer
 {
+    /// <summary>
+    /// 主线程
+    /// </summary>
+    private SynchronizationContext _mainThread;
+
+
+
     public string IP;
     public int Port;
 
@@ -42,6 +49,8 @@ public class SocketServer
 
     public SocketServer(string ip, int port)
     {
+        _mainThread = SynchronizationContext.Current;
+
         IP = ip;
         Port = port;
 
@@ -79,7 +88,7 @@ public class SocketServer
                 ClientInfoDic.Add(client, new SocketInfo() { Client = client, ReceiveThread = receiveThread, HeadTime = GetNowTime() });
                 receiveThread.Start(client);
 
-                if (OnConnect != null) OnConnect(client);
+                PostMainThreadAction<Socket>(OnConnect, client);
             }
             catch
             {
@@ -156,7 +165,8 @@ public class SocketServer
                         }
                         else
                         {
-                            onReceive(dataPack);
+                            // 收到消息
+                            PostMainThreadAction<SocketDataPack>(OnReceive, dataPack);
                         }
 
                     }
@@ -234,9 +244,13 @@ public class SocketServer
     /// <param name="client"></param>
     private void CloseClient(Socket client)
     {
-        if (OnDisconnect != null) OnDisconnect(client);
-        ClientInfoDic.Remove(client);
-        client.Close();
+        PostMainThreadAction<Socket>((socket) =>
+        {
+            if (OnDisconnect != null) OnDisconnect(socket);
+            ClientInfoDic.Remove(socket);
+            client.Close();
+        }, client);
+
     }
     /// <summary>
     /// 关闭
@@ -269,16 +283,28 @@ public class SocketServer
     /// <param name="e"></param>
     private void onError(SocketException ex)
     {
-        if (OnError != null) OnError(ex);
+        PostMainThreadAction<SocketException>(OnError, ex);
     }
 
-    /// <summary>
-    /// 接收数据回调
+
+    // <summary>
+    /// 通知主线程回调
     /// </summary>
-    /// <param name="dataPack"></param>
-    private void onReceive(SocketDataPack dataPack)
+    private void PostMainThreadAction(Action action)
     {
-        if (OnReceive != null) OnReceive(dataPack);
+        _mainThread.Post(new SendOrPostCallback((o) =>
+        {
+            Action e = (Action)o.GetType().GetProperty("action").GetValue(o);
+            if (e != null) e();
+        }), new { action = action });
     }
-
+    private void PostMainThreadAction<T>(Action<T> action, T arg1)
+    {
+        _mainThread.Post(new SendOrPostCallback((o) =>
+        {
+            Action<T> e = (Action<T>)o.GetType().GetProperty("action").GetValue(o);
+            T t1 = (T)o.GetType().GetProperty("arg1").GetValue(o);
+            if (e != null) e(t1);
+        }), new { action = action, arg1 = arg1 });
+    }
 }
