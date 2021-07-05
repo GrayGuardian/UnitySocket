@@ -17,11 +17,16 @@ public class SocketClient
     public string IP;
     public int Port;
 
+    private const int TIMEOUT_CONNECT = 3000;   // 连接超时时间 毫秒
+    private const int TIMEOUT_SEND = 3000;  // 发送超时时间 毫秒
+    private const int TIMEOUT_RECEIVE = 3000;   //接收超时时间 毫秒
+
     private const int HEAD_OFFSET = 2000; //心跳包发送间隔 毫秒
     private const int RECONN_MAX_SUM = 3;   //最大重连次数
 
     private Socket _client;
     private Thread _receiveThread;
+    private System.Timers.Timer _connTimeoutTimer;
     private System.Timers.Timer _headTimer;
     private DataBuffer _dataBuffer = new DataBuffer();
 
@@ -35,8 +40,6 @@ public class SocketClient
     public event Action<int> OnReconnecting;  // 重连中回调
 
     private bool _isConnect = false;
-    private bool _isReConnect = false;
-    private static object _reConnectLock = new object();
 
     public SocketClient(string ip, int port)
     {
@@ -49,29 +52,47 @@ public class SocketClient
         Action terrorEvent = null;
         tsuccessEvent = () =>
         {
-            if (successEvent != null) successEvent();
-            Main.text += "清理一次连接事件" + "\n";
             OnConnectSuccess -= tsuccessEvent;
             OnConnectError -= terrorEvent;
+            if (_connTimeoutTimer != null)
+            {
+                _connTimeoutTimer.Stop();
+                _connTimeoutTimer = null;
+            }
+            if (successEvent != null) successEvent();
         };
         terrorEvent = () =>
         {
-            if (errorEvent != null) errorEvent();
-            Main.text += "清理一次连接事件" + "\n";
             OnConnectSuccess -= tsuccessEvent;
             OnConnectError -= terrorEvent;
+            if (_connTimeoutTimer != null)
+            {
+                _connTimeoutTimer.Stop();
+                _connTimeoutTimer = null;
+            }
+            if (errorEvent != null) errorEvent();
         };
-        Main.text += "注册一次连接事件" + "\n";
         OnConnectSuccess += tsuccessEvent;
         OnConnectError += terrorEvent;
         try
         {
             _client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);//创建套接字
+            _client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, TIMEOUT_SEND);
+            _client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, TIMEOUT_RECEIVE);
             IPAddress ipAddress = IPAddress.Parse(IP);//解析IP地址
             IPEndPoint ipEndpoint = new IPEndPoint(ipAddress, Port);
             IAsyncResult result = _client.BeginConnect(ipEndpoint, new AsyncCallback(onConnect), _client);//异步连接
+
+            _connTimeoutTimer = new System.Timers.Timer(TIMEOUT_CONNECT);
+            _connTimeoutTimer.AutoReset = false;
+            _connTimeoutTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
+            {
+                if (OnConnectError != null) OnConnectError();
+            };
+            _connTimeoutTimer.Start();
+
         }
-        catch (SocketException e)
+        catch (SocketException ex)
         {
             if (OnConnectError != null) OnConnectError();
             // throw;
@@ -81,32 +102,45 @@ public class SocketClient
     /// 断线重连
     /// </summary>
     /// <param name="num"></param>
-    public void ReConnect(int num = 0)
+    public void ReConnect(int num = RECONN_MAX_SUM, int index = 0)
     {
-        num++;
-        if (num > RECONN_MAX_SUM)
+        num--;
+        index++;
+        if (num < 0)
         {
-            _isReConnect = false;
             Close();
             return;
         }
-        if (OnReconnecting != null) OnReconnecting(num);
+        if (OnReconnecting != null) OnReconnecting(index);
         Connect(() =>
         {
-            _isReConnect = false;
-            if (OnReConnectSuccess != null) OnReConnectSuccess(num);
+            if (OnReConnectSuccess != null) OnReConnectSuccess(index);
         }, () =>
         {
-            if (OnReConnectError != null) OnReConnectError(num);
-            ReConnect(num);
+            if (OnReConnectError != null) OnReConnectError(index);
+            ReConnect(num, index);
         });
 
     }
-    public void Send(UInt16 e, byte[] buff = null)
+    public void Send(UInt16 e, byte[] buff = null, Action<SocketDataPack> onTrigger = null)
     {
         buff = buff ?? new byte[] { };
-        var data = new SocketDataPack(e, buff).Buff;
-        _client.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(onSend), _client);
+        var dataPack = new SocketDataPack(e, buff);
+        var data = dataPack.Buff;
+        try
+        {
+            _client.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback((asyncSend) =>
+            {
+                Socket c = (Socket)asyncSend.AsyncState;
+                c.EndSend(asyncSend);
+                if (onTrigger != null) onTrigger(dataPack);
+            }), _client);
+        }
+        catch (SocketException ex)
+        {
+            onError(ex);
+        }
+
     }
     /// <summary>
     /// 线程内接收数据的函数
@@ -115,11 +149,10 @@ public class SocketClient
     {
         while (true)
         {
-
             try
             {
                 if (!_isConnect) break;
-                if (_client.Available <= 0) break;
+                if (_client.Available <= 0) continue;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = _client.Receive(rbytes);
                 if (len > 0)
@@ -128,10 +161,9 @@ public class SocketClient
                     var dataPack = new SocketDataPack();
                     if (_dataBuffer.TryUnpack(out dataPack)) // 尝试解包
                     {
-                        if (dataPack.Type == (UInt16)eProtocalCommand.sc_kickout)
+                        if (dataPack.Type == (UInt16)SocketEvent.sc_kickout)
                         {
                             // 服务端踢出
-                            UnityEngine.Debug.Log("服务器踢出连接");
                             Close();
                         }
                         else
@@ -143,9 +175,9 @@ public class SocketClient
                     }
                 }
             }
-            catch (SocketException e)
+            catch (SocketException ex)
             {
-                onError(e);
+                onError(ex);
                 // throw;
             }
         }
@@ -155,7 +187,7 @@ public class SocketClient
     /// </summary>
     public void DisConnect()
     {
-        Send((UInt16)eProtocalCommand.sc_disconn);
+        Send((UInt16)SocketEvent.sc_disconn);
         Close();
     }
     /// <summary>
@@ -166,7 +198,7 @@ public class SocketClient
 
         Clear();
 
-        onDisconnect();
+        if (OnDisconnect != null) OnDisconnect();
     }
     /// <summary>
     /// 缓存数据清理
@@ -212,7 +244,7 @@ public class SocketClient
             _headTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
             {
                 UnityEngine.Debug.Log("发送心跳包");
-                Send((UInt16)eProtocalCommand.sc_head);
+                Send((UInt16)SocketEvent.sc_head);
             };
             _headTimer.Start();
 
@@ -224,7 +256,7 @@ public class SocketClient
 
             if (OnConnectSuccess != null) OnConnectSuccess();
         }
-        catch (SocketException e)
+        catch (SocketException ex)
         {
             if (OnConnectError != null) OnConnectError();
             // throw;
@@ -235,27 +267,12 @@ public class SocketClient
     /// 错误回调
     /// </summary>
     /// <param name="e"></param>
-    private void onError(SocketException e)
+    private void onError(SocketException ex)
     {
         Clear();
-        if (OnError != null) OnError(e);
+        if (OnError != null) OnError(ex);
 
-        // 尝试重连
-        lock (_reConnectLock)
-        {
-            Main.text += "进入线程" + "\n";
-            UnityEngine.Debug.Log("进入线程");
-            if (!_isReConnect)
-            {
-                _isReConnect = true;
-                ReConnect();
-            }
-            else
-            {
-                Main.text += "已经在重连了" + "\n";
-                UnityEngine.Debug.Log("已经在重连了");
-            }
-        }
+        ReConnect();
     }
 
 
@@ -270,9 +287,9 @@ public class SocketClient
             Socket client = (Socket)asyncSend.AsyncState;
             client.EndSend(asyncSend);
         }
-        catch (SocketException e)
+        catch (SocketException ex)
         {
-            onError(e);
+            onError(ex);
             // throw;
 
         }
@@ -285,12 +302,5 @@ public class SocketClient
     {
         if (OnReceive != null) OnReceive(dataPack);
     }
-    /// <summary>
-    /// 断开连接/重连失败回调
-    /// </summary>
-    /// <param name="dataPack"></param>
-    private void onDisconnect()
-    {
-        if (OnDisconnect != null) OnDisconnect();
-    }
+
 }

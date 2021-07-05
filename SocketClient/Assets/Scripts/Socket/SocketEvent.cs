@@ -1,7 +1,7 @@
 ﻿/// <summary>
 /// 网络事件协议ID枚举
 /// </summary>
-public enum eProtocalCommand
+public enum SocketEvent
 {
     sc_head = 0x0001,   //心跳包
     sc_disconn = 0x0002,   //客户端主动断开

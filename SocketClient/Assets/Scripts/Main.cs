@@ -10,7 +10,6 @@ public class Main : MonoBehaviour
     private void Awake()
     {
         _client = new SocketClient("192.168.108.56", 6854);
-
         _client.OnDisconnect += () =>
         {
             text += "断开连接" + "\n";
@@ -43,7 +42,6 @@ public class Main : MonoBehaviour
             text += string.Format("正在进行第{0}次重连", num) + "\n";
             UnityEngine.Debug.LogFormat("正在进行第{0}次重连", num);
         };
-
 
 
         _client.Connect(() =>
