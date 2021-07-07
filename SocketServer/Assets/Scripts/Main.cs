@@ -16,9 +16,9 @@ public class Main : MonoBehaviour
         {
             UnityEngine.Debug.LogFormat("连接断开 >> IP:{0}", client.RemoteEndPoint.ToString());
         };
-        _server.OnReceive += (data) =>
+        _server.OnReceive += (client, data) =>
         {
-            UnityEngine.Debug.LogFormat("接收到数据>>>{0}", data.Buff.Length);
+            UnityEngine.Debug.LogFormat("[{0}]接收到数据>>>{1}", client.RemoteEndPoint.ToString(), data.Buff.Length);
         };
         _server.OnError += (ex) =>
         {

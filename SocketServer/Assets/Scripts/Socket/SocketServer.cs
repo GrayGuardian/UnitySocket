@@ -42,7 +42,7 @@ public class SocketServer
 
     public event Action<Socket> OnConnect;
     public event Action<Socket> OnDisconnect;  // 断开回调
-    public event Action<SocketDataPack> OnReceive;
+    public event Action<Socket, SocketDataPack> OnReceive;
     public event Action<SocketException> OnError;
 
     private bool _isValid = true;
@@ -166,7 +166,7 @@ public class SocketServer
                         else
                         {
                             // 收到消息
-                            PostMainThreadAction<SocketDataPack>(OnReceive, dataPack);
+                            PostMainThreadAction<Socket, SocketDataPack>(OnReceive, tsocket, dataPack);
                         }
 
                     }
@@ -306,5 +306,15 @@ public class SocketServer
             T t1 = (T)o.GetType().GetProperty("arg1").GetValue(o);
             if (e != null) e(t1);
         }), new { action = action, arg1 = arg1 });
+    }
+    public void PostMainThreadAction<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2)
+    {
+        _mainThread.Post(new SendOrPostCallback((o) =>
+        {
+            Action<T1, T2> e = (Action<T1, T2>)o.GetType().GetProperty("action").GetValue(o);
+            T1 t1 = (T1)o.GetType().GetProperty("arg1").GetValue(o);
+            T2 t2 = (T2)o.GetType().GetProperty("arg2").GetValue(o);
+            if (e != null) e(t1, t2);
+        }), new { action = action, arg1 = arg1, arg2 = arg2 });
     }
 }
