@@ -39,6 +39,10 @@ public class Main : MonoBehaviour
     }
     private void OnDestroy()
     {
-        _server.Close();
+        // 注意由于Unity编译器环境下，游戏开启/关闭只影响主线程的开关，游戏关闭回调时需要通过Close函数来关闭服务端/客户端的线程。
+        if (_server != null)
+        {
+            _server.Close();
+        }
     }
 }
