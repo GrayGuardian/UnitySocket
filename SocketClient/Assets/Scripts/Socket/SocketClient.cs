@@ -36,14 +36,14 @@ public class SocketClient
     private System.Timers.Timer _headTimer;
     private DataBuffer _dataBuffer = new DataBuffer();
 
-    public Action OnConnectSuccess;    // 连接成功
-    public Action OnConnectError;    // 连接失败
+    public event Action OnConnectSuccess;    // 连接成功回调
+    public event Action OnConnectError;    // 连接失败回调
     public event Action OnDisconnect;  // 断开回调
-    public event Action<SocketDataPack> OnReceive;  // 接收回调
-    public event Action<SocketException> OnError;   // 错误回调
-    public event Action<int> OnReConnectSuccess; // 重连成功
-    public event Action<int> OnReConnectError; // 重连失败
-    public event Action<int> OnReconnecting;  // 重连中回调
+    public event Action<SocketDataPack> OnReceive;  // 接收报文回调
+    public event Action<SocketException> OnError;   // 异常捕获回调
+    public event Action<int> OnReConnectSuccess; // 重连成功回调
+    public event Action<int> OnReConnectError; // 单次重连失败回调
+    public event Action<int> OnReconnecting;  // 单次重连中回调
 
     private bool _isConnect = false;
 

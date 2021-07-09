@@ -40,10 +40,10 @@ public class SocketServer
     private System.Timers.Timer _headCheckTimer;
     private DataBuffer _dataBuffer = new DataBuffer();
 
-    public event Action<Socket> OnConnect;
-    public event Action<Socket> OnDisconnect;  // 断开回调
-    public event Action<Socket, SocketDataPack> OnReceive;
-    public event Action<SocketException> OnError;
+    public event Action<Socket> OnConnect;  //客户端建立连接回调
+    public event Action<Socket> OnDisconnect;  // 客户端断开连接回调
+    public event Action<Socket, SocketDataPack> OnReceive;  // 接收报文回调
+    public event Action<SocketException> OnError;   // 异常捕获回调
 
     private bool _isValid = true;
 
