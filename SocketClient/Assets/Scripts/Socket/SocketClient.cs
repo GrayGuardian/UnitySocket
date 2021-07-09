@@ -118,7 +118,7 @@ public class SocketClient
         index++;
         if (num < 0)
         {
-            Close();
+            onDisconnect();
             return;
         }
         PostMainThreadAction<int>(OnReconnecting, index);
@@ -174,7 +174,7 @@ public class SocketClient
                         if (dataPack.Type == (UInt16)SocketEvent.sc_kickout)
                         {
                             // 服务端踢出
-                            Close();
+                            onDisconnect();
                         }
                         else
                         {
@@ -199,22 +199,13 @@ public class SocketClient
     public void DisConnect()
     {
         Send((UInt16)SocketEvent.sc_disconn);
-        Close();
+        onDisconnect();
     }
-    /// <summary>
-    /// 业务逻辑 - 被服务端断开
-    /// </summary>
-    public void Close()
-    {
 
-        Clear();
-
-        PostMainThreadAction(OnDisconnect);
-    }
     /// <summary>
     /// 缓存数据清理
     /// </summary>
-    public void Clear()
+    public void Close()
     {
         if (!_isConnect) return;
         _isConnect = false;
@@ -284,7 +275,7 @@ public class SocketClient
     /// <param name="e"></param>
     private void onError(SocketException ex)
     {
-        Clear();
+        Close();
 
         PostMainThreadAction<SocketException>(OnError, ex);
 
@@ -310,6 +301,16 @@ public class SocketClient
 
         }
     }
+    /// <summary>
+    /// 断开回调
+    /// </summary>
+    private void onDisconnect()
+    {
+
+        Close();
+
+        PostMainThreadAction(OnDisconnect);
+    }
 
     /// <summary>
     /// 通知主线程回调
@@ -330,5 +331,15 @@ public class SocketClient
             T t1 = (T)o.GetType().GetProperty("arg1").GetValue(o);
             if (e != null) e(t1);
         }), new { action = action, arg1 = arg1 });
+    }
+    public void PostMainThreadAction<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2)
+    {
+        _mainThread.Post(new SendOrPostCallback((o) =>
+        {
+            Action<T1, T2> e = (Action<T1, T2>)o.GetType().GetProperty("action").GetValue(o);
+            T1 t1 = (T1)o.GetType().GetProperty("arg1").GetValue(o);
+            T2 t2 = (T2)o.GetType().GetProperty("arg2").GetValue(o);
+            if (e != null) e(t1, t2);
+        }), new { action = action, arg1 = arg1, arg2 = arg2 });
     }
 }

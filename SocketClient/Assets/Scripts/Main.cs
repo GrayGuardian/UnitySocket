@@ -9,7 +9,7 @@ public class Main : MonoBehaviour
     public static string text;
     private void Awake()
     {
-        _client = new SocketClient("192.168.108.56", 6854);
+        _client = new SocketClient("127.0.0.1", 6854);
         _client.OnDisconnect += () =>
         {
             text += "断开连接" + "\n";
@@ -64,7 +64,7 @@ public class Main : MonoBehaviour
     {
         if (_client != null)
         {
-            _client.Clear();
+            _client.Close();
         }
 
     }
