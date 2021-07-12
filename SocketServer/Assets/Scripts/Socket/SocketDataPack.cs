@@ -69,8 +69,8 @@ public class SocketDataPack
             }
             byte[] temp;
             // 取数据长度
-            temp = new byte[HEAD_LEN];
-            Array.Copy(buff, 0, temp, 0, HEAD_LEN);
+            temp = new byte[HEAD_DATA_LEN];
+            Array.Copy(buff, 0, temp, 0, HEAD_DATA_LEN);
             int buffLength = BitConverter.ToInt32(temp, 0);
             if (buffLength <= 0) return null;
             int dataLength = buffLength - HEAD_LEN;

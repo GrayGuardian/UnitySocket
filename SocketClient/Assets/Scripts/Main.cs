@@ -48,6 +48,8 @@ public class Main : MonoBehaviour
         {
             text += "连接成功" + "\n";
             UnityEngine.Debug.Log("连接成功");
+
+
             // _client.DisConnect();
         }, () =>
         {
