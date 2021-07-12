@@ -18,7 +18,16 @@ public class Main : MonoBehaviour
         };
         _server.OnReceive += (client, data) =>
         {
-            UnityEngine.Debug.LogFormat("[{0}]接收到数据>>>{1}", client.RemoteEndPoint.ToString(), data.Buff.Length);
+            UnityEngine.Debug.LogFormat("[{0}]接收到数据>>>{1} {2}", client.RemoteEndPoint.ToString(), (SocketEvent)data.Type, data.Buff.Length);
+
+            switch ((SocketEvent)data.Type)
+            {
+                case SocketEvent.sc_test:
+                    ByteStreamBuff byteStreamBuff = new ByteStreamBuff(data.Data);
+                    UnityEngine.Debug.LogFormat("接收到测试数据 >>> {0}", byteStreamBuff.Read_UniCodeString());
+                    byteStreamBuff.Close();
+                    break;
+            }
         };
         _server.OnError += (ex) =>
         {

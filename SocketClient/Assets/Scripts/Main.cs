@@ -18,8 +18,8 @@ public class Main : MonoBehaviour
 
         _client.OnReceive += (data) =>
         {
-            text += string.Format("接收到数据>>>{0}", data.Buff.Length) + "\n";
-            UnityEngine.Debug.LogFormat("接收到数据>>>{0}", data.Buff.Length);
+            text += string.Format("接收到数据>>>{0} {1}", (SocketEvent)data.Type, data.Buff.Length) + "\n";
+            UnityEngine.Debug.LogFormat("接收到数据>>>{0} {1}", (SocketEvent)data.Type, data.Buff.Length);
         };
         _client.OnError += (ex) =>
         {
@@ -49,7 +49,10 @@ public class Main : MonoBehaviour
             text += "连接成功" + "\n";
             UnityEngine.Debug.Log("连接成功");
 
-
+            ByteStreamBuff byteStreamBuff = new ByteStreamBuff();
+            byteStreamBuff.Write_UniCodeString("我是测试数据");
+            _client.Send((System.UInt16)SocketEvent.sc_test, byteStreamBuff.ToArray());
+            byteStreamBuff.Close();
             // _client.DisConnect();
         }, () =>
         {
