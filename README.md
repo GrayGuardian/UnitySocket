@@ -38,19 +38,19 @@
 	4. 如存在以下情况，则断开连接：
 		- 服务端主动踢出连接，即时响应，回调DisConnect
 		- 客户端主动断开连接，即时响应，回调DisConnect
+		- 客户端关闭连接，即时响应，回调DisConnect
 		- 服务端检测到客户端太久没有发送心跳包，此处需要响应时间，根据心跳包超时间隔、心跳包发送间隔及服务端心跳包超时检测间隔来决定，发现超时则回调DisConnect
 		- 通信逻辑过程中报错，即时响应，自动重连，默认重连上限为三次，达到重连上限并未成功，则回调DisConnect
 - 接收数据 
 	1. 接收线程收到数据，存放入DataBuff数据缓存区。
 	2. DataBuff中不断通过SocketDataPack尝试解包，解包成功后将报文发送到接收线程。
 	3. 接收线程收到报文后，触发OnReceive回调
-	4. 业务层通过OnReceive回调接收到报文后，可以通过ByteStreamBuff反序列化报文体得到数据
+	4. 业务层通过OnReceive回调接收到报文后，反序列化报文体得到数据
 - 发送数据
 	1. 业务层通过ByteStreamBuff序列化数据得到报文体字节集，通过Send函数发送数据。
 	2. Send函数中，通过SocketDataPack装包后，以字节集的形式发送出去。 
 
 ## 代码说明 
-- ByteStreamBuff：Socket报文体序列化类，此处为了简单考虑，仅使用了Binary，可自行改为Protobuf、Json等序列化形式
 - DataBuffer：Socket传输数据缓存区，此处主要处理Socket传输时粘包、分包的情况
 - SocketEvent：Socket报文类型枚举，此处只枚举了网络底层需要发送的报文类型，业务逻辑层所使用的报文类型，建议封装至报文体序列化类中
 - SocketDataPack：Socket报文类，处理具体的拆包、装包逻辑

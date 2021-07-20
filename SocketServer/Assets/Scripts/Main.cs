@@ -23,9 +23,7 @@ public class Main : MonoBehaviour
             switch ((SocketEvent)data.Type)
             {
                 case SocketEvent.sc_test:
-                    ByteStreamBuff byteStreamBuff = new ByteStreamBuff(data.Data);
-                    UnityEngine.Debug.LogFormat("接收到测试数据 >>> {0}", byteStreamBuff.Read_UniCodeString());
-                    byteStreamBuff.Close();
+                    UnityEngine.Debug.LogFormat("接收到测试数据 >>> {0}", System.Text.Encoding.UTF8.GetString(data.Data));
                     break;
             }
         };

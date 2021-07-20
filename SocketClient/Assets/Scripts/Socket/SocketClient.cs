@@ -181,8 +181,6 @@ public class SocketClient
                             // 收到消息
                             PostMainThreadAction<SocketDataPack>(OnReceive, dataPack);
                         }
-
-
                     }
                 }
             }
@@ -250,8 +248,8 @@ public class SocketClient
             _headTimer.AutoReset = true;
             _headTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
             {
-                UnityEngine.Debug.Log("发送心跳包");
-                Send((UInt16)SocketEvent.sc_head);
+                // UnityEngine.Debug.Log("发送心跳包");
+                // Send((UInt16)SocketEvent.sc_head);
             };
             _headTimer.Start();
 
