@@ -89,6 +89,8 @@ public class SocketServer
                 receiveThread.Start(client);
 
                 PostMainThreadAction<Socket>(OnConnect, client);
+
+
             }
             catch
             {
@@ -143,7 +145,7 @@ public class SocketServer
             }
             try
             {
-                if (tsocket.Available <= 0) continue;
+                // if (tsocket.Available <= 0) continue;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = tsocket.Receive(rbytes);
                 if (len > 0)
@@ -169,6 +171,15 @@ public class SocketServer
                             PostMainThreadAction<Socket, SocketDataPack>(OnReceive, tsocket, dataPack);
                         }
 
+                    }
+                }
+                else
+                {
+                    if (tsocket.Poll(-1, SelectMode.SelectRead))
+                    {
+                        // 客户端断开连接
+                        CloseClient(tsocket);
+                        return;
                     }
                 }
             }
