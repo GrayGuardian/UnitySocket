@@ -51,7 +51,7 @@
 
 ## 代码说明 
 - ByteStreamBuff：Socket报文体序列化类，此处为了简单考虑，仅使用了Binary，可自行改为Protobuf、Json等序列化形式
-- DataBuff：Socket传输数据缓存区，此处主要处理Socket传输时粘包、分包的情况
+- DataBuffer：Socket传输数据缓存区，此处主要处理Socket传输时粘包、分包的情况
 - SocketEvent：Socket报文类型枚举，此处只枚举了网络底层需要发送的报文类型，业务逻辑层所使用的报文类型，建议封装至报文体序列化类中
 - SocketDataPack：Socket报文类，处理具体的拆包、装包逻辑
 - SocketServer：Socket服务端
