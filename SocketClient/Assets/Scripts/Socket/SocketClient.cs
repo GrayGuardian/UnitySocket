@@ -46,7 +46,7 @@ public class SocketClient
     public event Action<int> OnReconnecting;  // 单次重连中回调
 
     private bool _isConnect = false;
-
+    private bool _isReconnect = false;
 
 
     public SocketClient(string ip, int port)
@@ -114,17 +114,21 @@ public class SocketClient
     /// <param name="num"></param>
     public void ReConnect(int num = RECONN_MAX_SUM, int index = 0)
     {
+        _isReconnect = true;
+
         num--;
         index++;
         if (num < 0)
         {
             onDisconnect();
+            _isReconnect = false;
             return;
         }
         PostMainThreadAction<int>(OnReconnecting, index);
         Connect(() =>
         {
             PostMainThreadAction<int>(OnReConnectSuccess, index);
+            _isReconnect = false;
         }, () =>
         {
             PostMainThreadAction<int>(OnReConnectError, index);
@@ -248,8 +252,8 @@ public class SocketClient
             _headTimer.AutoReset = true;
             _headTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
             {
-                // UnityEngine.Debug.Log("发送心跳包");
-                // Send((UInt16)SocketEvent.sc_head);
+                UnityEngine.Debug.Log("发送心跳包");
+                Send((UInt16)SocketEvent.sc_head);
             };
             _headTimer.Start();
 
@@ -277,7 +281,10 @@ public class SocketClient
 
         PostMainThreadAction<SocketException>(OnError, ex);
 
-        ReConnect();
+        if (!_isReconnect)
+        {
+            ReConnect();
+        }
     }
 
 

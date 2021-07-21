@@ -41,8 +41,6 @@ public class Main : MonoBehaviour
         {
             UnityEngine.Debug.Log("连接成功");
 
-            _client.Send((System.UInt16)SocketEvent.sc_test, System.Text.Encoding.UTF8.GetBytes("我是测试数据"));
-
             // _client.DisConnect();
         }, () =>
         {
@@ -50,6 +48,20 @@ public class Main : MonoBehaviour
         });
 
     }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes("我是测试数据");
+            _client.Send((System.UInt16)SocketEvent.sc_test, bytes);
+        }
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            _client.DisConnect();
+        }
+    }
+
     private void OnDestroy()
     {
         // 注意由于Unity编译器环境下，游戏开启/关闭只影响主线程的开关，游戏关闭回调时需要通过Close函数来关闭服务端/客户端的线程。
