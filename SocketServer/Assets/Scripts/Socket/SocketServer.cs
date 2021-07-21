@@ -145,6 +145,7 @@ public class SocketServer
             }
             try
             {
+                if (tsocket.Available <= 0) continue;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = tsocket.Receive(rbytes);
                 if (len > 0)
