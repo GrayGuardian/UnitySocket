@@ -10,15 +10,15 @@ public class Main : MonoBehaviour
         _server = new SocketServer("127.0.0.1", 6854);
         _server.OnConnect += (client) =>
         {
-            UnityEngine.Debug.LogFormat("连接成功 >> IP:{0}", client.RemoteEndPoint.ToString());
+            UnityEngine.Debug.LogFormat("连接成功 >> IP:{0}", client.LocalEndPoint.ToString());
         };
         _server.OnDisconnect += (client) =>
         {
-            UnityEngine.Debug.LogFormat("连接断开 >> IP:{0}", client.RemoteEndPoint.ToString());
+            UnityEngine.Debug.LogFormat("连接断开 >> IP:{0}", client.LocalEndPoint.ToString());
         };
         _server.OnReceive += (client, data) =>
         {
-            UnityEngine.Debug.LogFormat("[{0}]接收到数据>>>{1} {2}", client.RemoteEndPoint.ToString(), (SocketEvent)data.Type, data.Buff.Length);
+            UnityEngine.Debug.LogFormat("[{0}]接收到数据>>>{1} {2}", client.LocalEndPoint.ToString(), (SocketEvent)data.Type, data.Buff.Length);
 
             switch ((SocketEvent)data.Type)
             {
@@ -27,10 +27,7 @@ public class Main : MonoBehaviour
                     break;
             }
         };
-        _server.OnError += (ex) =>
-        {
-            UnityEngine.Debug.Log("出现异常>>>>" + ex);
-        };
+
     }
     private void Update()
     {

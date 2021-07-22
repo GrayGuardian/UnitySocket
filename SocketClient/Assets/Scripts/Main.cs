@@ -14,9 +14,13 @@ public class Main : MonoBehaviour
             UnityEngine.Debug.Log("断开连接");
         };
 
-        _client.OnReceive += (data) =>
+        _client.OnReceive += (dataPack) =>
         {
-            UnityEngine.Debug.LogFormat("接收到数据>>>{0} {1}", (SocketEvent)data.Type, data.Buff.Length);
+            UnityEngine.Debug.LogFormat("接收数据>>>{0}", (SocketEvent)dataPack.Type);
+        };
+        _client.OnSend += (dataPack) =>
+        {
+            UnityEngine.Debug.LogFormat("发送数据>>>{0}", (SocketEvent)dataPack.Type);
         };
         _client.OnError += (ex) =>
         {

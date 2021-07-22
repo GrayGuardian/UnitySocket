@@ -3,6 +3,8 @@
 
 （针对Unity对线程的不友好，做了部分处理，本质是还是纯粹的C#代码编写，可以随意移植）
 
+**基于NodeJs平台下的Socket网络通信模块** >>> [前往项目](https://github.com/GrayGuardian/NodeJsSocket)
+
 ## 环境依赖 
 
 - 项目运行平台： Unity2019.4.8f1
@@ -47,7 +49,7 @@
 	3. 接收线程收到报文后，触发OnReceive回调
 	4. 业务层通过OnReceive回调接收到报文后，反序列化报文体得到数据
 - 发送数据
-	1. 业务层通过ByteStreamBuff序列化数据得到报文体字节集，通过Send函数发送数据。
+	1. 业务层序列化数据得到报文体字节集，通过Send函数发送数据。
 	2. Send函数中，通过SocketDataPack装包后，以字节集的形式发送出去。 
 
 ## 代码说明 
@@ -62,7 +64,6 @@
 	- public event Action<Socket> OnConnect;	//客户端建立连接回调
 	- public event Action<Socket> OnDisconnect;	// 客户端断开连接回调
 	- public event Action<Socket, SocketDataPack> OnReceive;	// 接收报文回调
-	- public event Action<SocketException> OnError;	// 异常捕获回调
 - SocketClient	客户端
 	- public event Action OnConnectSuccess;	// 连接成功回调
 	- public event Action OnConnectError;	// 连接失败回调

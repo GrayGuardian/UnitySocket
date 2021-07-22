@@ -40,6 +40,7 @@ public class SocketClient
     public event Action OnConnectError;    // 连接失败回调
     public event Action OnDisconnect;  // 断开回调
     public event Action<SocketDataPack> OnReceive;  // 接收报文回调
+    public event Action<SocketDataPack> OnSend;  // 发送报文回调
     public event Action<SocketException> OnError;   // 异常捕获回调
     public event Action<int> OnReConnectSuccess; // 重连成功回调
     public event Action<int> OnReConnectError; // 单次重连失败回调
@@ -56,34 +57,26 @@ public class SocketClient
         IP = ip;
         Port = port;
     }
-    public void Connect(Action successEvent = null, Action errorEvent = null)
+    public void Connect(Action success = null, Action error = null)
     {
-        Action tsuccessEvent = null;
-        Action terrorEvent = null;
-        tsuccessEvent = () =>
+        Action<bool> onTrigger = (flag) =>
         {
-            OnConnectSuccess -= tsuccessEvent;
-            OnConnectError -= terrorEvent;
+            if (flag)
+            {
+                PostMainThreadAction(success);
+                PostMainThreadAction(OnConnectSuccess);
+            }
+            else
+            {
+                PostMainThreadAction(error);
+                PostMainThreadAction(OnConnectError);
+            }
             if (_connTimeoutTimer != null)
             {
                 _connTimeoutTimer.Stop();
                 _connTimeoutTimer = null;
             }
-            if (successEvent != null) successEvent();
         };
-        terrorEvent = () =>
-        {
-            OnConnectSuccess -= tsuccessEvent;
-            OnConnectError -= terrorEvent;
-            if (_connTimeoutTimer != null)
-            {
-                _connTimeoutTimer.Stop();
-                _connTimeoutTimer = null;
-            }
-            if (errorEvent != null) errorEvent();
-        };
-        OnConnectSuccess += tsuccessEvent;
-        OnConnectError += terrorEvent;
         try
         {
             _client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);//创建套接字
@@ -91,20 +84,48 @@ public class SocketClient
             _client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, TIMEOUT_RECEIVE);
             IPAddress ipAddress = IPAddress.Parse(IP);//解析IP地址
             IPEndPoint ipEndpoint = new IPEndPoint(ipAddress, Port);
-            IAsyncResult result = _client.BeginConnect(ipEndpoint, new AsyncCallback(onConnect), _client);//异步连接
+            IAsyncResult result = _client.BeginConnect(ipEndpoint, new AsyncCallback((iar) =>
+            {
+                try
+                {
+                    Socket client = (Socket)iar.AsyncState;
+                    client.EndConnect(iar);
+
+                    _isConnect = true;
+                    // 开始发送心跳包
+                    _headTimer = new System.Timers.Timer(HEAD_OFFSET);
+                    _headTimer.AutoReset = true;
+                    _headTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
+                    {
+                        Send((UInt16)SocketEvent.sc_head);
+                    };
+                    _headTimer.Start();
+
+                    // 开始接收数据
+                    _receiveThread = new Thread(new ThreadStart(ReceiveEvent));
+                    _receiveThread.IsBackground = true;
+                    _receiveThread.Start();
+
+                    onTrigger(true);
+                }
+                catch (SocketException ex)
+                {
+                    onTrigger(false);
+                }
+            }), _client);//异步连接
 
             _connTimeoutTimer = new System.Timers.Timer(TIMEOUT_CONNECT);
             _connTimeoutTimer.AutoReset = false;
             _connTimeoutTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
             {
-                PostMainThreadAction(OnConnectError);
+                onTrigger(false);
             };
             _connTimeoutTimer.Start();
 
         }
         catch (SocketException ex)
         {
-            PostMainThreadAction(OnConnectError);
+            onTrigger(false);
             // throw;
         }
     }
@@ -148,6 +169,7 @@ public class SocketClient
                 Socket c = (Socket)asyncSend.AsyncState;
                 c.EndSend(asyncSend);
                 PostMainThreadAction<SocketDataPack>(onTrigger, dataPack);
+                PostMainThreadAction<SocketDataPack>(OnSend, dataPack);
             }), _client);
         }
         catch (SocketException ex)
@@ -235,41 +257,7 @@ public class SocketClient
 
 
     }
-    /// <summary>
-    /// 连接成功回调
-    /// </summary>
-    /// <param name="iar"></param>
-    private void onConnect(IAsyncResult iar)
-    {
-        try
-        {
-            Socket client = (Socket)iar.AsyncState;
-            client.EndConnect(iar);
 
-            _isConnect = true;
-            // 开始发送心跳包
-            _headTimer = new System.Timers.Timer(HEAD_OFFSET);
-            _headTimer.AutoReset = true;
-            _headTimer.Elapsed += delegate (object sender, ElapsedEventArgs args)
-            {
-                UnityEngine.Debug.Log("发送心跳包");
-                Send((UInt16)SocketEvent.sc_head);
-            };
-            _headTimer.Start();
-
-            // 开始接收数据
-            _receiveThread = new Thread(new ThreadStart(ReceiveEvent));
-            _receiveThread.IsBackground = true;
-            _receiveThread.Start();
-
-            PostMainThreadAction(OnConnectSuccess);
-        }
-        catch (SocketException ex)
-        {
-            PostMainThreadAction(OnConnectError);
-            // throw;
-        }
-    }
 
     /// <summary>
     /// 错误回调
@@ -288,24 +276,6 @@ public class SocketClient
     }
 
 
-    /// <summary>
-    /// 发送消息回调，可判断当前网络状态
-    /// </summary>
-    /// <param name="asyncSend"></param>
-    private void onSend(IAsyncResult asyncSend)
-    {
-        try
-        {
-            Socket client = (Socket)asyncSend.AsyncState;
-            client.EndSend(asyncSend);
-        }
-        catch (SocketException ex)
-        {
-            onError(ex);
-            // throw;
-
-        }
-    }
     /// <summary>
     /// 断开回调
     /// </summary>

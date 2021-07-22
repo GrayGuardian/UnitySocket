@@ -43,7 +43,10 @@ public class SocketServer
     public event Action<Socket> OnConnect;  //客户端建立连接回调
     public event Action<Socket> OnDisconnect;  // 客户端断开连接回调
     public event Action<Socket, SocketDataPack> OnReceive;  // 接收报文回调
-    public event Action<SocketException> OnError;   // 异常捕获回调
+    public event Action<Socket, SocketDataPack> OnSend;  // 发送报文回调
+
+    // 目前捕获异常将触发OnDisconnect回调 暂不单独处理
+    // public event Action<SocketException> OnError;   // 异常捕获回调
 
     private bool _isValid = true;
 
@@ -121,12 +124,14 @@ public class SocketServer
             {
                 Socket c = (Socket)asyncSend.AsyncState;
                 c.EndSend(asyncSend);
-                if (onTrigger != null) onTrigger(dataPack);
+                PostMainThreadAction<SocketDataPack>(onTrigger, dataPack);
+                PostMainThreadAction<Socket, SocketDataPack>(OnSend, client, dataPack);
             }), client);
         }
         catch (SocketException ex)
         {
-            onError(ex);
+            CloseClient(client);
+            // onError(ex);
         }
 
     }
@@ -138,14 +143,13 @@ public class SocketServer
         Socket tsocket = (Socket)client;
         while (true)
         {
-            if (!_isValid) break;
+            if (!_isValid) return;
             if (!ClientInfoDic.ContainsKey(tsocket))
             {
-                break;
+                return;
             }
             try
             {
-                if (tsocket.Available <= 0) continue;
                 byte[] rbytes = new byte[8 * 1024];
                 int len = tsocket.Receive(rbytes);
                 if (len > 0)
@@ -154,7 +158,6 @@ public class SocketServer
                     var dataPack = new SocketDataPack();
                     if (_dataBuffer.TryUnpack(out dataPack)) // 尝试解包
                     {
-
                         if (dataPack.Type == (UInt16)SocketEvent.sc_head)
                         {
                             // 接收到心跳包
@@ -177,7 +180,6 @@ public class SocketServer
                 {
                     if (tsocket.Poll(-1, SelectMode.SelectRead))
                     {
-                        // 客户端断开连接
                         CloseClient(tsocket);
                         return;
                     }
@@ -185,7 +187,9 @@ public class SocketServer
             }
             catch (SocketException ex)
             {
-                onError(ex);
+                CloseClient(tsocket);
+                // onError(ex);
+                return;
             }
         }
     }
@@ -259,7 +263,7 @@ public class SocketServer
         {
             if (OnDisconnect != null) OnDisconnect(socket);
             ClientInfoDic.Remove(socket);
-            client.Close();
+            socket.Close();
         }, client);
 
     }
@@ -288,14 +292,14 @@ public class SocketServer
         _server.Close();
     }
 
-    /// <summary>
-    /// 错误回调
-    /// </summary>
-    /// <param name="e"></param>
-    private void onError(SocketException ex)
-    {
-        PostMainThreadAction<SocketException>(OnError, ex);
-    }
+    // /// <summary>
+    // /// 错误回调
+    // /// </summary>
+    // /// <param name="e"></param>
+    // private void onError(SocketException ex)
+    // {
+    //     PostMainThreadAction<SocketException>(OnError, ex);
+    // }
 
 
     // <summary>
